@@ -11,15 +11,17 @@ const patternSize = 3;
 const outputGridRows = 10;
 const outputGridCols = 10;
 const outputCanvasCellSize = 20;
+const colors = ["blue", "red", "green", "yellow", "purple", "orange"];
 
 // globals ------------------------------------------------------------------->
 let inputGrid = Array(inputGridRows).fill().map(() => Array(inputGridCols).fill(0));
-let outputGrid = Array(outputGridRows).fill().map(() => Array(outputGridCols).fill(0));
+let outputGrid = Array(outputGridRows).fill().map(() => Array(outputGridCols).fill(-1));
 let superTileOutputGrid = Array(outputGridRows).fill().map(() => Array(outputGridCols).fill(null));
 let superColorOutputGrid = Array(outputGridRows).fill().map(() => Array(outputGridCols).fill(null));
 let entropyGrid = Array(outputGridRows).fill().map(() => Array(outputGridCols).fill(null));
 let colorIndex = 1
 let numInputColors;
+let patterns;
 
 // setup --------------------------------------------------------------------->
 let inputCanvas = document.getElementById("inputCanvas");
@@ -31,9 +33,6 @@ let outputCanvas = document.getElementById("outputCanvas");
 outputCanvas.width = outputGridCols * outputCanvasCellSize;
 outputCanvas.height = outputGridCols * outputCanvasCellSize;
 let outputCtx = outputCanvas.getContext("2d")
-
-inputCtx.fillStyle = "green"
-inputCtx.fillRect(0, 0, inputCanvas.width, inputCanvas.height)
 
 inputCanvas.addEventListener("click", (event) => {
     const rect = inputCanvas.getBoundingClientRect()
@@ -53,7 +52,7 @@ function renderInput() {
 
     for (let i = 0; i < inputGridRows; i++) {
         for (let j = 0; j < inputGridCols; j++) {
-            inputCtx.fillStyle = ["blue", "red", "green"][inputGrid[i][j]]
+            inputCtx.fillStyle = colors[inputGrid[i][j]]
             let cellWidth = inputCanvas.width / inputGridCols
             let cellHeight = inputCanvas.height / inputGridRows
             inputCtx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight)
@@ -68,23 +67,26 @@ function renderOutput() {
 
     for (let i = 0; i < outputGridRows; i++) {
         for (let j = 0; j < outputGridCols; j++) {
-            if (entropyGrid[i][j] == 0) {
-                outputCtx.fillStyle = ["blue", "red", "green"][outputGrid[i][j]]
+            let cellText;
+            if (entropyGrid[i][j] === 1) {
+                cellText = "-"
+                outputCtx.fillStyle = colors[outputGrid[i][j]]
             } else {
+                cellText = entropyGrid[i][j];
                 outputCtx.fillStyle = "white"
             }
             let cellWidth = outputCanvas.width / outputGridCols
             let cellHeight = outputCanvas.height / outputGridRows
             outputCtx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight)
             outputCtx.fillStyle = "black" 
-            outputCtx.fillText(entropyGrid[i][j], j * cellWidth + 5, i * cellHeight + 15)
+            outputCtx.fillText(cellText, j * cellWidth + 5, i * cellHeight + 15)
         }
     }
 }
 
 // wave function collapse ---------------------------------------------------->
 function generatePatterns() {
-    let patterns = []
+    patterns = []
     for (let i = 0; i <= inputGridRows - patternSize; i++) {
         for (let j = 0; j <= inputGridCols - patternSize; j++) {
             let pattern = Array(patternSize).fill().map(() => Array(patternSize).fill(0))
@@ -96,11 +98,9 @@ function generatePatterns() {
             patterns.push(pattern);
         }
     }
-
-    return patterns;
 }
 
-function wfc(patterns) {
+function wfc() {
     console.log({patterns})
     // get number of colors used in the input
     const set = new Set();
@@ -132,7 +132,7 @@ function wfc(patterns) {
     }
 
     let collapseIdx = [rint(outputGridRows), rint(outputGridCols)]
-    collapse(...collapseIdx, patterns)
+    collapse(...collapseIdx)
     renderOutput()
     /*
     while (isEntropy()) {
@@ -144,7 +144,7 @@ function wfc(patterns) {
     */
 }
 
-function collapse(row, col, patterns) {
+function collapse(row, col) {
     console.log({row, col}) 
     let selectedIndex = getRandomPossibility(row, col)
     console.log({selectedIndex})
@@ -160,20 +160,23 @@ function collapse(row, col, patterns) {
             }
             for (let k = 0; k < numInputColors; k++) {
                 // must do bounds check
-                superColorOutputGrid[row + i][col + j][k] = selectedTile[i][j] == k;
+                superColorOutputGrid[row + i][col + j][k] = selectedTile[i][j] === k;
             }
+            console.log(superColorOutputGrid[row + i][col + j])
             // update output
             outputGrid[row + i][col + j] = selectedTile[i][j];
             // update entropy grid
-            entropyGrid[row + i][col + j] = 0;
+            // can't do this here yet because ...
+            entropyGrid[row + i][col + j] = 1;
         }
     } 
     // update super tile
-    for (let i = 0; i < outputGrid[row][col].length; i++) {
-        outputGrid[row][col][i] = selectedIndex == i;
+    for (let i = 0; i < superTileOutputGrid[row][col].length; i++) {
+        superTileOutputGrid[row][col][i] = selectedIndex === i;
     }
+    entropyGrid[row][col] = 1
+    console.log(superTileOutputGrid[row][col])
     
-
     propegate(row, col);
 }
 
@@ -181,7 +184,7 @@ function getRandomPossibility(row, col) {
     let possibilities = [];
     console.log({outputGrid, row, col})
     for (let i = 0; i < superTileOutputGrid[row][col].length; i++) {
-        if (superTileOutputGrid[row][col][i] == true) {
+        if (superTileOutputGrid[row][col][i] === true) {
             possibilities.push(i)
         }
     }
@@ -192,7 +195,61 @@ function getRandomPossibility(row, col) {
 }
 
 function propegate(row, col) {
-    
+    // update the tiles based on the pixel change in all affectable cells
+    for (let i = -2; i <= 2; i++) {
+        for (let j = -2; j <= 2; j++) {
+            let rowTarget = row + i;
+            let colTarget = col + j; 
+            if (rowTarget < 0 || rowTarget >= outputGridRows || colTarget < 0 || colTarget >= outputGridCols) {
+                continue;
+            }
+
+            // go through all the valid grids, check if each is still valid
+            revalidatePatterns(rowTarget, colTarget)
+        }
+    }
+}
+
+// takes a row and col in the bounds of the grid
+// re evaluates whether the patterns in the array are still valid based on the 
+// current pixels
+function revalidatePatterns(row, col) {
+    for (let i = 0; i < superTileOutputGrid[row][col].length; i++) {
+        if (superTileOutputGrid[row][col][i] === false) {
+            console.log("skipping")
+            continue;
+        }
+        if (isValidPattern(row, col, i) === false) {
+            // console.log("invalidPattern")
+            superTileOutputGrid[row][col][i] = false;
+            // entropyGrid[row][col]--;
+        } else {
+            console.log("valid pattern")
+        }
+    }
+}
+
+// for a pattern to be valid:
+//  - for each cell in the pattern the following must be true:
+//      - in the superColorGrid, that color index must be true
+function isValidPattern(row, col, index) {
+    // for each cell in the pattern
+    for (let i = 0; i < patternSize; i++) {
+        for (let j = 0; j < patternSize; j++) {
+            let rowTarget = row + i;
+            let colTarget = col + j;
+
+            if (rowTarget < 0 || rowTarget >= outputGridRows || colTarget < 0 || colTarget >= outputGridCols) {
+                continue;
+            }
+
+            let patternColorIndex = patterns[index][i][j];
+            if (superColorOutputGrid[rowTarget][colTarget][patternColorIndex] == false) {
+                return false
+            }
+        }
+    }
+    return true
 }
 
 function findLowestEntropies() {
@@ -239,9 +296,22 @@ function synthInputClick(row, col) {
     inputCanvas.dispatchEvent(clickEvent)
 }
 
-for (let i = 0; i < 12; i++) {
+colorIndex = 1;
+for (let i = 0; i < 8; i++) {
     synthInputClick(rint(inputGridRows), rint(inputGridCols))
 }
+/*
+colorIndex = 2;
+for (let i = 0; i < 8; i++) {
+    synthInputClick(rint(inputGridRows), rint(inputGridCols))
+}
+*/
 
-wfc(generatePatterns())
+// debug --------------------------------------------------------------------->
+
+
+// run ----------------------------------------------------------------------->
+
+generatePatterns()
+wfc()
 

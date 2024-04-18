@@ -144,6 +144,10 @@ function wfc() {
 //          check if it is still a valid pattern
 
 function collapse(row, col) {
+    // for each of these collapsed cells, we want to shoot a laser upwards and
+    // shatter all the glass patterns above that don't have the lasers color
+    // in their grid at that location
+    let collapsedCells = []; 
     console.log({row, col}) 
     let selectedIndex = getRandomPossibility(row, col)
     console.log({selectedIndex})
@@ -158,6 +162,7 @@ function collapse(row, col) {
                 continue;
             }
             // update super color
+            // should check if the color was already set, if so we don't need to check for tile updates for that cell
             for (let k = 0; k < numInputColors; k++) {
                 // must do bounds check
                 superColorOutputGrid[row + i][col + j][k] = selectedTile[i][j] === k;
@@ -169,6 +174,7 @@ function collapse(row, col) {
             // entropy for pattern, just the one selcted. This should go 
             // outside of this loop
             // entropyGrid[row + i][col + j] = 1;
+            collapsedCells.push([rowTarget, colTarget])
         }
     } 
     // update super tile
@@ -176,8 +182,38 @@ function collapse(row, col) {
         superTileOutputGrid[row][col][i] = selectedIndex === i;
     }
     entropyGrid[row][col] = 1
-    
-    propegate(row, col);
+
+    // collapsedCells = [collapsedCells[0]]
+    propegate2(collapsedCells);
+    // propegate(row, col);
+}
+
+function propegate2(collapsedCells) {
+    for (let i = 0; i < collapsedCells.length; i++) {
+        propegate3(collapsedCells[i][0], collapsedCells[i][1])
+    }
+}
+
+
+function propegate3(row, col) {
+    for (let i = 0; i < patternSize; i++) {
+        for (let j = 0; j < patternSize; j++) {
+            let rowTarget = row - i;
+            let colTarget = col - j;
+            // for each pattern
+            for (let k = 0; k < patterns.length; k++) {
+                console.log(superTileOutputGrid[rowTarget][colTarget][k])
+                if (superTileOutputGrid[rowTarget][colTarget][k] === false) {
+                    continue
+                }
+                console.log({"patterns[k][i][j]": patterns[k][i][j], "outputGrid[row][col]": outputGrid[row][col]})
+                if (patterns[k][i][j] !== outputGrid[row][col]) {
+                    superTileOutputGrid[rowTarget][colTarget][k] = false;
+                    entropyGrid[rowTarget][colTarget]--;
+                }
+            }
+        }
+    }
 }
 
 function getRandomPossibility(row, col) {
@@ -221,6 +257,7 @@ function revalidatePatterns(row, col) {
         if (isValidPattern(row, col, i) === false) {
             // console.log("invalidPattern")
             superTileOutputGrid[row][col][i] = false;
+            console.log("---")
             entropyGrid[row][col]--;
         }
     }

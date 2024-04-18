@@ -4,8 +4,8 @@
 //  - propegate the changes when a cell in collapsed
 
 // constants ----------------------------------------------------------------->
-const inputGridRows = 5;
-const inputGridCols = 5;
+const inputGridRows = 6;
+const inputGridCols = 6;
 const inputCanvasCellSize = 31;
 const patternSize = 3;
 const outputGridRows = 10;
@@ -22,17 +22,13 @@ let entropyGrid = Array(outputGridRows).fill().map(() => Array(outputGridCols).f
 let colorIndex = 1
 let numInputColors;
 let patterns;
+let debugFirstPatternIndex;
 
 // setup --------------------------------------------------------------------->
 let inputCanvas = document.getElementById("inputCanvas");
 inputCanvas.width = inputGridCols * inputCanvasCellSize;
 inputCanvas.height = inputGridRows * inputCanvasCellSize;
 let inputCtx = inputCanvas.getContext("2d");
-
-let outputCanvas = document.getElementById("outputCanvas");
-outputCanvas.width = outputGridCols * outputCanvasCellSize;
-outputCanvas.height = outputGridCols * outputCanvasCellSize;
-let outputCtx = outputCanvas.getContext("2d")
 
 inputCanvas.addEventListener("click", (event) => {
     const rect = inputCanvas.getBoundingClientRect()
@@ -56,30 +52,6 @@ function renderInput() {
             let cellWidth = inputCanvas.width / inputGridCols
             let cellHeight = inputCanvas.height / inputGridRows
             inputCtx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight)
-        }
-    }
-}
-
-// optimization: could be refactor into one function with renderInput
-function renderOutput() {
-    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-    // outputCtx.font = ""
-
-    for (let i = 0; i < outputGridRows; i++) {
-        for (let j = 0; j < outputGridCols; j++) {
-            let cellText;
-            if (entropyGrid[i][j] === 1) {
-                cellText = "-"
-                outputCtx.fillStyle = colors[outputGrid[i][j]]
-            } else {
-                cellText = entropyGrid[i][j];
-                outputCtx.fillStyle = "white"
-            }
-            let cellWidth = outputCanvas.width / outputGridCols
-            let cellHeight = outputCanvas.height / outputGridRows
-            outputCtx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight)
-            outputCtx.fillStyle = "black" 
-            outputCtx.fillText(cellText, j * cellWidth + 5, i * cellHeight + 15)
         }
     }
 }
@@ -132,8 +104,8 @@ function wfc() {
     }
 
     let collapseIdx = [rint(outputGridRows), rint(outputGridCols)]
+    debugFirstPatternIndex = collapseIdx;
     collapse(...collapseIdx)
-    renderOutput()
     /*
     while (isEntropy()) {
         collapse(...collapseIdx)
@@ -143,6 +115,33 @@ function wfc() {
     }
     */
 }
+
+// rethinking the algo ---
+// I'm not sure if the super color grid is even useful
+// I think that 
+// wait maybe I'm wrong again
+// I might just be thinking about how the color grid verifies colors wrong
+// maybe i need to break the changes into waves? With wave 1 (originating from
+// the initial collapse) dictating which colors a cell can be for wave 2?
+
+// 1. collapse a superTile index into one tile
+//      - set the correct superTile[row][col][rand] to true
+//      - set the entropy to 1
+// 2. collect each unset cell under the tile into a list
+//      - iterate over the ?output? grid, 
+// 3. from the list, generate all the tiles that could be affected by that cell
+// 4. for each tile in the list, check if it is still valid. If it's not add it
+//    to a list
+// 5. from the list of invalidated tiles, generate a list of cells which they
+//    could affect
+// 6. for each cell in tha list, check to see if it's list of colors is still valid
+//
+// set each of the colors effected by the tile
+// if an unset cell color was set:
+//      add it to the list
+// for each cell in the list
+//      for each pattern that could be effected by the cell
+//          check if it is still a valid pattern
 
 function collapse(row, col) {
     console.log({row, col}) 
@@ -158,16 +157,18 @@ function collapse(row, col) {
             if (rowTarget >= superColorOutputGrid.length || colTarget >= superColorOutputGrid[rowTarget].length) {
                 continue;
             }
+            // update super color
             for (let k = 0; k < numInputColors; k++) {
                 // must do bounds check
                 superColorOutputGrid[row + i][col + j][k] = selectedTile[i][j] === k;
             }
-            console.log(superColorOutputGrid[row + i][col + j])
             // update output
             outputGrid[row + i][col + j] = selectedTile[i][j];
             // update entropy grid
-            // can't do this here yet because ...
-            entropyGrid[row + i][col + j] = 1;
+            // can't do this here yet because ... we don't update the tile 
+            // entropy for pattern, just the one selcted. This should go 
+            // outside of this loop
+            // entropyGrid[row + i][col + j] = 1;
         }
     } 
     // update super tile
@@ -175,7 +176,6 @@ function collapse(row, col) {
         superTileOutputGrid[row][col][i] = selectedIndex === i;
     }
     entropyGrid[row][col] = 1
-    console.log(superTileOutputGrid[row][col])
     
     propegate(row, col);
 }
@@ -216,15 +216,12 @@ function propegate(row, col) {
 function revalidatePatterns(row, col) {
     for (let i = 0; i < superTileOutputGrid[row][col].length; i++) {
         if (superTileOutputGrid[row][col][i] === false) {
-            console.log("skipping")
             continue;
         }
         if (isValidPattern(row, col, i) === false) {
             // console.log("invalidPattern")
             superTileOutputGrid[row][col][i] = false;
-            // entropyGrid[row][col]--;
-        } else {
-            console.log("valid pattern")
+            entropyGrid[row][col]--;
         }
     }
 }

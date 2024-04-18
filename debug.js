@@ -21,28 +21,29 @@ let debugSuperColorCtx = debugSuperColorCanvas.getContext("2d")
 
 renderGrid(debugEntropyCanvas, debugEntropyCtx, entropyGrid, {
     cellColorFunc: (grid, row, col) => ["grey", "green"][grid[row][col]] ?? "white",
-    cellTextFunc: (grid, row, col) => grid[row][col]
+    cellTextFunc: (grid, row, col) => grid[row][col],
+    borderFirstPattern: true
 })
 
 renderGrid(debugOutputCanvas, debugOutputCtx, outputGrid, {
     cellColorFunc: (grid, row, col) => ["white", ...colors][grid[row][col] + 1] ?? "black",
-    cellTextFunc: (grid, row, col) => grid[row][col]
+    cellTextFunc: (grid, row, col) => grid[row][col],
+    borderFirstPattern: true
 })
 
 renderGrid(debugSuperPatternEntropyCanvas, debugSuperPatternEntropyCtx, superTileOutputGrid, {
     cellColorFunc: (grid, row, col) => grid[row][col].filter(v => v === true).length === entropyGrid[row][col] ? "white" : "red",
-    cellTextFunc: (grid, row, col) => grid[row][col].filter(v => v === true).length
+    cellTextFunc: (grid, row, col) => grid[row][col].filter(v => v === true).length,
+    borderFirstPattern: true
 })
 
 renderGrid(debugSuperColorCanvas, debugSuperColorCtx, superColorOutputGrid, {
     cellColorFunc: (grid, row, col) => ["red", "green"][grid[row][col].filter(v => v === true).length] ?? "white",
-    cellTextFunc: (grid, row, col) => grid[row][col].filter(v => v === true).length
+    cellTextFunc: (grid, row, col) => grid[row][col].filter(v => v === true).length,
+    borderFirstPattern: true
 })
 
 let patternsList = document.getElementById("patternsList")
-let patternCanvases;
-let patternCtxs;
-
 function debugRenderPatterns() {
     patternsList.innerHTML = "";
     patternCanvases = [];
@@ -58,8 +59,6 @@ function debugRenderPatterns() {
             cellColorFunc: (grid, row, col) => colors[grid[row][col]]
         })
 
-        //
-        patternCanvases.push(newCanvas)
         patternsList.appendChild(newCanvas);
     }
 }
@@ -71,22 +70,28 @@ function renderGrid(canvas, canvasCtx, grid, options) {
     canvasCtx.clearRect(0, 0, canvas.width, canvas.height)
     canvasCtx.fillRect(0, 0, canvas.width, canvas.height)
 
+    let cellWidth = canvas.width / grid.length
+    let cellHeight = canvas.height / grid[0].length
     for (let i = 0; i < grid.length; i++) {
         for (let j = 0; j < grid[i].length; j++) {
-            let cellWidth = canvas.width / grid.length
-            let cellHeight = canvas.height / grid[i].length
             if (options.cellColorFunc) {
                 canvasCtx.fillStyle = options.cellColorFunc(grid, i, j)
                 canvasCtx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight)
             }
             if (options.cellTextFunc) {
-                console.log("yo")
                 canvasCtx.fillStyle = "black";
                 let cellText = options.cellTextFunc(grid, i, j)
-                console.log(cellText)
                 canvasCtx.fillText(cellText, j * cellWidth + 5, i * cellHeight + 15)
             }
         }
+    }
+
+    if (options.borderFirstPattern) {
+        canvasCtx.strokeStyle = "black"
+        canvasCtx.lineWidth = 2
+        let [x, y] = debugFirstPatternIndex;
+        canvasCtx.strokeRect(y * cellWidth, x * cellHeight, patternSize * cellWidth, patternSize * cellHeight)
+
     }
 }
 

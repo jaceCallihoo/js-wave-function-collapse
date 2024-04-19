@@ -196,20 +196,54 @@ function propegate2(collapsedCells) {
 
 
 function propegate3(row, col) {
+    let updatedTiles = new Set();
     for (let i = 0; i < patternSize; i++) {
         for (let j = 0; j < patternSize; j++) {
             let rowTarget = row - i;
             let colTarget = col - j;
+            if (rowTarget < 0 || rowTarget >= superTileOutputGrid.length || colTarget < 0 || colTarget >= superTileOutputGrid[0].length) {
+                continue
+            }
             // for each pattern
+            let hasUpdated = false;
             for (let k = 0; k < patterns.length; k++) {
-                console.log(superTileOutputGrid[rowTarget][colTarget][k])
                 if (superTileOutputGrid[rowTarget][colTarget][k] === false) {
                     continue
                 }
-                console.log({"patterns[k][i][j]": patterns[k][i][j], "outputGrid[row][col]": outputGrid[row][col]})
                 if (patterns[k][i][j] !== outputGrid[row][col]) {
                     superTileOutputGrid[rowTarget][colTarget][k] = false;
                     entropyGrid[rowTarget][colTarget]--;
+                    // todo: if this is triggerd, set a flag that will add this 
+                    // grid to a list so that we can propegate the coler values
+                    // of all the cells below
+                    hasUpdated = true;
+                }
+            }
+
+            if (hasUpdated) {
+                updatedTiles.add(`${rowTarget}-${colTarget}`)
+            }
+        }
+    }
+
+
+    updatedTiles = Array.from(updatedTiles)
+    for (let i = 0; i < updatedTiles.length; i++) {
+        let [rowTarget, colTarget] = updatedTiles[i].split('-').map(x => parseInt(x));
+        propegate4(rowTarget, colTarget);
+    }
+
+}
+
+function propegate4(row, col) {
+    console.log({row, col})
+    for (let i = 0; i < patternSize; i++) {
+        for (let j = 0; j < patternSize; j++) {
+            for (let k = 0; k < numInputColors; k++) {
+                // do bounds check
+
+                if (colors[k] !== ) {
+
                 }
             }
         }

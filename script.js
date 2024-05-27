@@ -251,7 +251,14 @@ function propegate4(row, col) {
     }
 }
 
-
+// optimization: should remove items from the queue based on how few pixels are
+// possible in that location. This would mean that it's less likely for the
+// pixels to need to be recalculated
+// optimization: if a pixel value is set we do not need to check if it is valid
+// (but we do need to check if it's set to 1 but not set in the output yet as
+// there could still be a contridiction (i think))
+// question: if a pixel is validated at 1, should it be set to that color in
+// the output?
 function setValidPixelColors(row, col) {
     // note: there is some logic about checking for if a valid pixel color has
     // been removed. This could probable be done by the calling function
@@ -271,6 +278,8 @@ function setValidPixelColors(row, col) {
     // if the number of valid pixels is different, return true
 }
 
+// optimization: create a datastructure that can contain a set of positions
+// with an entropy and return the position with the lowest entropy
 function addAffectables(row, col, set) {
     for (let i = 0; i < patternSize; i++) {
         for (let j = 0; j < patternSize; j++) {

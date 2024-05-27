@@ -241,10 +241,41 @@ function propegate4(row, col) {
         for (let j = 0; j < patternSize; j++) {
             for (let k = 0; k < numInputColors; k++) {
                 // do bounds check
-
+                /*
                 if (colors[k] !== ) {
 
                 }
+                */
+            }
+        }
+    }
+}
+
+
+function setValidPixelColors(row, col) {
+    // note: there is some logic about checking for if a valid pixel color has
+    // been removed. This could probable be done by the calling function
+
+    // get the current number of valid pixels: (assumption! we can use the 
+    // number because there will never be a case where an invalid pixel becomes
+    // valid again. Therefore we can assume that if the number of valid pixels
+    // has changed it means that a pixel has been removed and we possibly need
+    // to make adjustments to it's neighbours)
+
+    // create a new valid pixel list with all values set to false
+
+    // for each pattern pixel above the position, if the pattern is valid, set 
+    // the pixel color in the new valid pixel color list to true 
+
+
+    // if the number of valid pixels is different, return true
+}
+
+function addAffectables(row, col, set) {
+    for (let i = 0; i < patternSize; i++) {
+        for (let j = 0; j < patternSize; j++) {
+            if (row - i >= 0 && col - j >= 0) {
+                set.add(`${row - i}-${col - j}`)
             }
         }
     }

@@ -269,6 +269,28 @@ function setValidPixelColors(row, col) {
     // has changed it means that a pixel has been removed and we possibly need
     // to make adjustments to it's neighbours)
 
+    let validColors = Array(numInputColors).fill(false)
+
+    // search through all the above pattern tiles for each unique color
+    for (let i = 0; i < patternSize; i++) {
+        for (let j = 0; j < patternSize; j++) {
+            let targetPatternRow = row - i;
+            let targetPatternCol = col - j;
+            for (let k = 0; k < patterns.length; k++) {
+                // check that the pattern is valid, if not skip the next part
+                if (superTileOutputGrid[targetPatternRow][targetPatternCol] === false) {
+                    continue;
+                }
+
+                // get the color of the tile that is k above
+                let color = patterns[k][i][j];
+
+                // 
+                validColors[color] = true;
+                // patterns[targetPatternRow][targetPatternCol] = 
+            }
+        }
+    }
     // create a new valid pixel list with all values set to false
 
     // for each pattern pixel above the position, if the pattern is valid, set 
